@@ -2,17 +2,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { ServerClient } from 'postmark'
 
 export default async function handler(
-  _request: VercelRequest,
+  request: VercelRequest,
   response: VercelResponse,
 ) {
   const client = new ServerClient(process.env.POSTMARK_SERVER_TOKEN || '')
+  const receivers = (process.env.POSTMARK_RECEIVERS || '').split(',')
 
-  const postmarkResponse = await client.sendEmail({
-    From: process.env.POSTMARK_SENDER_EMAIL || '',
-    To: process.env.POSTMARK_RECEIVER || '',
-    Subject: 'Test',
-    TextBody: 'Postmark works!',
-  })
+  const postmarkResponse = await client.sendEmailBatch(
+    receivers.map((receiver) => ({
+      From: process.env.POSTMARK_SENDER_EMAIL || '',
+      To: receiver,
+      Subject: 'Test',
+      TextBody: JSON.stringify(request.body) || 'Postmark works!',
+      MessageStream: process.env.POSTMARK_MESSAGE_STREAM || '',
+    })),
+  )
 
   response.status(200).json(postmarkResponse)
 }
